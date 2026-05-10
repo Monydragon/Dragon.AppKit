@@ -1,0 +1,19 @@
+<Styles xmlns="https://github.com/avaloniaui">
+  <Style Selector="Window">
+    <Setter Property="Background" Value="#07111F" />
+    <Setter Property="Foreground" Value="#EDF7FF" />
+    <Setter Property="FontFamily" Value="Inter, Segoe UI" />
+  </Style>
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="#10233A" />
+    <Setter Property="BorderBrush" Value="#24405E" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="16" />
+  </Style>
+  <Style Selector="TextBlock.title">
+    <Setter Property="FontSize" Value="28" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+</Styles>
+

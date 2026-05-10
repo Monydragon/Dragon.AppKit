@@ -1,0 +1,11 @@
+<Solution>
+  <Project Path="DragonTemplate.App/DragonTemplate.App.csproj" />
+  <Project Path="DragonTemplate.Application/DragonTemplate.Application.csproj" />
+  <Project Path="DragonTemplate.Core/DragonTemplate.Core.csproj" />
+  <Project Path="DragonTemplate.Infrastructure/DragonTemplate.Infrastructure.csproj" />
+  <Project Path="DragonTemplate.Desktop/DragonTemplate.Desktop.csproj" />
+  <Project Path="DragonTemplate.Browser/DragonTemplate.Browser.csproj" />
+  <Project Path="DragonTemplate.Android/DragonTemplate.Android.csproj" />
+  <Project Path="DragonTemplate.Tests/DragonTemplate.Tests.csproj" />
+</Solution>
+

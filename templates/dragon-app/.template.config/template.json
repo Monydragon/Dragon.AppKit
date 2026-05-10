@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Dragon AppKit",
+  "classifications": ["Avalonia", "Dragon", "LocalFirst"],
+  "identity": "Dragon.AppKit.Template",
+  "name": "Dragon AppKit local-first Avalonia app",
+  "shortName": "dragon-app",
+  "sourceName": "DragonTemplate",
+  "preferNameDirectory": true,
+  "symbols": {
+    "product": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "Dragon Template",
+      "replaces": "Dragon Template",
+      "description": "Human-readable product name."
+    },
+    "app-id": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "com.dragontemplate.app",
+      "replaces": "com.dragontemplate.app",
+      "description": "Platform package/application id."
+    },
+    "env-prefix": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "DRAGON_TEMPLATE",
+      "replaces": "DRAGON_TEMPLATE",
+      "description": "Uppercase environment variable prefix."
+    },
+    "targets": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "Desktop,Android,Browser",
+      "replaces": "Desktop,Android,Browser",
+      "description": "Comma-separated supported target list."
+    },
+    "androidVersionCode": {
+      "type": "parameter",
+      "datatype": "integer",
+      "defaultValue": "1",
+      "replaces": "1001",
+      "description": "Initial Android integer version code."
+    }
+  }
+}

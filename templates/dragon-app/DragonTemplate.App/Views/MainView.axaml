@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="DragonTemplate.App.Views.MainView">
+  <Grid RowDefinitions="Auto,*" Margin="28">
+    <StackPanel Orientation="Horizontal" Spacing="14">
+      <Image Source="avares://DragonTemplate.App/Assets/Brand/in-app-mark.svg"
+             Width="48"
+             Height="48" />
+      <StackPanel>
+        <TextBlock Classes="title" Text="Dragon Template" />
+        <TextBlock Foreground="#A8B7CC" Text="Local-first Avalonia baseline" />
+      </StackPanel>
+    </StackPanel>
+
+    <Grid Grid.Row="1"
+          ColumnDefinitions="2*,*"
+          RowDefinitions="*"
+          ColumnSpacing="16"
+          Margin="0,28,0,0">
+      <Border Classes="card">
+        <StackPanel Spacing="12">
+          <TextBlock FontSize="18" FontWeight="SemiBold" Text="Production Baseline" />
+          <TextBlock TextWrapping="Wrap" Text="This starter includes Clean Architecture projects, desktop/browser/android hosts, QA scripts, release manifests, and Dragon branding placeholders." />
+          <Button HorizontalAlignment="Left" Content="Ready" />
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="1" Classes="card">
+        <StackPanel Spacing="10">
+          <TextBlock FontSize="18" FontWeight="SemiBold" Text="Next Checks" />
+          <TextBlock Text="Build" />
+          <TextBlock Text="Test" />
+          <TextBlock Text="Smoke" />
+          <TextBlock Text="Release gate" />
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>
+

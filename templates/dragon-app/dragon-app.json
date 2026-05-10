@@ -1,0 +1,31 @@
+{
+  "$schema": "./dragon-app.schema.json",
+  "productName": "Dragon Template",
+  "shortName": "DragonTemplate",
+  "namespace": "DragonTemplate",
+  "appId": "com.dragontemplate.app",
+  "envPrefix": "DRAGON_TEMPLATE",
+  "version": "0.1.0",
+  "androidVersionCode": 1001,
+  "targetPreset": "Desktop,Android,Browser",
+  "supportedTargets": ["Desktop", "Android", "Browser"],
+  "paths": {
+    "solution": "DragonTemplate.slnx",
+    "releaseRoot": "artifacts/releases",
+    "qaRoot": "artifacts/qa",
+    "docsRoot": "docs"
+  },
+  "release": {
+    "defaultPlatforms": ["Desktop", "Browser", "Android"],
+    "defaultDesktopRuntimes": ["win-x64"]
+  },
+  "publishing": {
+    "itch": {
+      "user": "",
+      "game": "",
+      "channel": "windows",
+      "sourcePath": "",
+      "butlerPath": "butler"
+    }
+  }
+}

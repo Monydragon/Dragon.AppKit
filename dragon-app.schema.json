@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dragon.local/schemas/dragon-app.schema.json",
+  "title": "Dragon App Contract",
+  "type": "object",
+  "required": [
+    "productName",
+    "shortName",
+    "namespace",
+    "appId",
+    "envPrefix",
+    "version",
+    "androidVersionCode",
+    "supportedTargets"
+  ],
+  "properties": {
+    "productName": { "type": "string", "minLength": 1 },
+    "shortName": { "type": "string", "minLength": 1 },
+    "namespace": { "type": "string", "minLength": 1 },
+    "appId": { "type": "string", "minLength": 1 },
+    "envPrefix": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+    "version": { "type": "string", "minLength": 1 },
+    "androidVersionCode": { "type": "integer", "minimum": 1 },
+    "supportedTargets": {
+      "type": "array",
+      "items": { "enum": ["Desktop", "Browser", "Android", "iOS", "Windows", "Linux", "macOS"] },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "paths": {
+      "type": "object",
+      "properties": {
+        "solution": { "type": "string" },
+        "releaseRoot": { "type": "string" },
+        "qaRoot": { "type": "string" },
+        "docsRoot": { "type": "string" }
+      }
+    },
+    "release": {
+      "type": "object",
+      "properties": {
+        "defaultDesktopRuntimes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "defaultPlatforms": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "publishing": {
+      "type": "object",
+      "properties": {
+        "itch": {
+          "type": "object",
+          "properties": {
+            "user": { "type": "string" },
+            "game": { "type": "string" },
+            "channel": { "type": "string" },
+            "sourcePath": { "type": "string" },
+            "butlerPath": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

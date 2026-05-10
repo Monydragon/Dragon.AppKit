@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dragon.local/schemas/dragon-app.schema.json",
+  "title": "Dragon App Contract",
+  "type": "object",
+  "properties": {
+    "publishing": {
+      "type": "object",
+      "properties": {
+        "itch": {
+          "type": "object",
+          "properties": {
+            "user": { "type": "string" },
+            "game": { "type": "string" },
+            "channel": { "type": "string" },
+            "sourcePath": { "type": "string" },
+            "butlerPath": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

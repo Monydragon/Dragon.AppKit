@@ -1,0 +1,242 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:Dragon.AppKit.Publisher.Core"
+        x:Class="Dragon.AppKit.Publisher.Views.MainWindow"
+        Title="Dragon Publisher"
+        Width="1400"
+        Height="920"
+        MinWidth="1120"
+        MinHeight="760">
+  <Grid>
+    <Grid RowDefinitions="Auto,*" Margin="18" RowSpacing="14">
+      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+        <TextBox x:Name="WorkspacePathBox"
+                 PlaceholderText="Workspace root or project folder" />
+        <Button Grid.Column="1"
+                Content="Browse"
+                Click="BrowseWorkspace_Click" />
+        <Button Grid.Column="2"
+                Content="Scan"
+                Click="ScanWorkspace_Click" />
+      </Grid>
+
+      <Grid Grid.Row="1"
+            ColumnDefinitions="340,*"
+            ColumnSpacing="14">
+        <Border Classes="panel">
+          <Grid RowDefinitions="Auto,*" RowSpacing="10">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="section" Text="Projects" />
+              <TextBlock Classes="muted" Text="Dragon, Avalonia, KNI/MonoGame, MAUI, and .NET roots" />
+            </StackPanel>
+
+            <ListBox x:Name="ProjectList"
+                     Grid.Row="1"
+                     SelectionChanged="ProjectList_SelectionChanged">
+              <ListBox.ContextMenu>
+                <ContextMenu>
+                  <MenuItem Header="Open project folder" Click="OpenProjectFolder_Click" />
+                  <MenuItem Header="Open scripts folder" Click="OpenScriptsFolder_Click" />
+                  <MenuItem Header="Open artifacts folder" Click="OpenArtifactsFolder_Click" />
+                  <MenuItem Header="Open publisher logs" Click="OpenPublisherLogsFolder_Click" />
+                  <MenuItem Header="Open docs folder" Click="OpenDocsFolder_Click" />
+                </ContextMenu>
+              </ListBox.ContextMenu>
+              <ListBox.ItemTemplate>
+                <DataTemplate DataType="core:DragonProject">
+                  <StackPanel Margin="4" Spacing="3">
+                    <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
+                    <TextBlock Classes="muted" Text="{Binding ProjectKind}" />
+                    <TextBlock Classes="muted" Text="{Binding RootPath}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Border>
+
+        <Grid Grid.Column="1"
+              RowDefinitions="Auto,*,230"
+              RowSpacing="14">
+          <Border Classes="panel">
+            <Grid ColumnDefinitions="2*,*,*" ColumnSpacing="18">
+              <StackPanel Spacing="4">
+                <TextBlock Classes="section" Text="Detected Project" />
+                <TextBlock x:Name="DetectedNameText" FontSize="22" FontWeight="SemiBold" Text="No project selected" />
+                <TextBlock x:Name="DetectedPathText" Classes="muted" Text="Choose or scan a project." />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Spacing="4">
+                <TextBlock Classes="muted" Text="Type" />
+                <TextBlock x:Name="DetectedTypeText" Text="-" />
+                <TextBlock Classes="muted" Text="App Id" />
+                <TextBlock x:Name="DetectedAppIdText" Text="-" />
+                <TextBlock Classes="muted" Text="Solutions" />
+                <TextBlock x:Name="DetectedSolutionsText" Text="-" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Spacing="4">
+                <TextBlock Classes="muted" Text="Version" />
+                <TextBlock x:Name="DetectedVersionText" Text="-" />
+                <TextBlock Classes="muted" Text="Targets" />
+                <TextBlock x:Name="DetectedTargetsText" Text="-" />
+                <TextBlock Classes="muted" Text="Publish" />
+                <TextBlock x:Name="DetectedPublishText" Text="-" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Grid Grid.Row="1"
+                ColumnDefinitions="1.05*,1.05*,1.25*"
+                ColumnSpacing="14">
+            <Border Classes="panel">
+              <ScrollViewer>
+                <StackPanel Spacing="12">
+                  <TextBlock Classes="section" Text="Release Options" />
+                  <TextBlock Text="Configuration" />
+                  <ComboBox x:Name="ConfigurationBox" SelectionChanged="Option_SelectionChanged" />
+                  <TextBlock Text="Version" />
+                  <TextBox x:Name="VersionBox" TextChanged="Option_TextChanged" />
+                  <TextBlock Text="Build Version" />
+                  <TextBox x:Name="BuildVersionBox" TextChanged="Option_TextChanged" />
+                  <CheckBox x:Name="UpdateVersionBox" Content="Write version metadata before publish" IsCheckedChanged="Option_CheckedChanged" />
+                  <Button Content="Apply Version Now" Click="ApplyVersion_Click" />
+                  <CheckBox x:Name="SkipTestsBox" Content="Skip tests" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="SelfContainedBox" Content="Self-contained desktop" IsCheckedChanged="Option_CheckedChanged" />
+                  <TextBlock Text="Artifact Output Directory" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox x:Name="ArtifactOutputBox" PlaceholderText="Optional custom release root" TextChanged="Option_TextChanged" />
+                    <Button Grid.Column="1" Content="Browse" Click="BrowseArtifactOutput_Click" />
+                  </Grid>
+                </StackPanel>
+              </ScrollViewer>
+            </Border>
+
+            <Border Grid.Column="1" Classes="panel">
+              <ScrollViewer>
+                <StackPanel Spacing="12">
+                  <TextBlock Classes="section" Text="Targets" />
+                  <CheckBox x:Name="DesktopBox" Content="Desktop" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="BrowserBox" Content="Browser" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="AndroidBox" Content="Android" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="IosBox" Content="iOS" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="WindowsBox" Content="Windows" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="LinuxBox" Content="Linux" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="MacOsBox" Content="macOS" IsCheckedChanged="Option_CheckedChanged" />
+
+                  <TextBlock Classes="section" Margin="0,8,0,0" Text="Desktop Runtimes" />
+                  <CheckBox x:Name="WinX64Box" Content="win-x64" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="LinuxX64Box" Content="linux-x64" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="OsxX64Box" Content="osx-x64" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="OsxArm64Box" Content="osx-arm64" IsCheckedChanged="Option_CheckedChanged" />
+                </StackPanel>
+              </ScrollViewer>
+            </Border>
+
+            <Border Grid.Column="2" Classes="panel">
+              <ScrollViewer>
+                <StackPanel Spacing="12">
+                  <TextBlock Classes="section" Text="Platform Details" />
+                  <TextBlock Text="Android Version Code" />
+                  <NumericUpDown x:Name="AndroidVersionCodeBox" Minimum="0" Maximum="2100000000" ValueChanged="Option_ValueChanged" />
+                  <TextBlock Text="Android Package Format" />
+                  <ComboBox x:Name="AndroidPackageFormatBox" SelectionChanged="Option_SelectionChanged" />
+                  <TextBlock Text="Android Signing Mode" />
+                  <ComboBox x:Name="AndroidSigningModeBox" SelectionChanged="Option_SelectionChanged" />
+                  <TextBlock Text="iOS Runtime" />
+                  <ComboBox x:Name="IosRuntimeBox" SelectionChanged="Option_SelectionChanged" />
+                  <TextBlock Text="iOS Signing" />
+                  <ComboBox x:Name="IosSigningBox" SelectionChanged="Option_SelectionChanged" />
+                  <CheckBox x:Name="IosArchiveBox" Content="Archive iOS on build" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="ScreenshotQaBox" Content="Run screenshot QA" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="CleanSlateQaBox" Content="Run clean-slate QA" IsCheckedChanged="Option_CheckedChanged" />
+                  <CheckBox x:Name="PerformanceQaBox" Content="Run performance QA" IsCheckedChanged="Option_CheckedChanged" />
+
+                  <Separator />
+                  <TextBlock Classes="section" Text="itch.io" />
+                  <CheckBox x:Name="ItchPublishBox" Content="Publish with butler after build" IsCheckedChanged="Option_CheckedChanged" />
+                  <TextBlock Text="Butler Path" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox x:Name="ButlerPathBox" TextChanged="Option_TextChanged" />
+                    <Button Grid.Column="1" Content="Browse" Click="BrowseButler_Click" />
+                  </Grid>
+                  <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="Itch User" />
+                      <TextBox x:Name="ItchUserBox" TextChanged="Option_TextChanged" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="4">
+                      <TextBlock Text="Itch Game" />
+                      <TextBox x:Name="ItchGameBox" TextChanged="Option_TextChanged" />
+                    </StackPanel>
+                  </Grid>
+                  <TextBlock Text="Channel" />
+                  <TextBox x:Name="ItchChannelBox" PlaceholderText="windows, browser, android..." TextChanged="Option_TextChanged" />
+                  <TextBlock Text="Source Path" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox x:Name="ItchSourcePathBox" PlaceholderText="Defaults to release folder for this version" TextChanged="Option_TextChanged" />
+                    <Button Grid.Column="1" Content="Browse" Click="BrowseItchSource_Click" />
+                  </Grid>
+                  <TextBlock Text="Extra Arguments" />
+                  <TextBox x:Name="ItchExtraArgumentsBox" PlaceholderText="--userversion 0.1.0" TextChanged="Option_TextChanged" />
+                  <Button Content="Test Butler" Click="TestButler_Click" />
+
+                  <Separator />
+                  <TextBlock Text="Extra Publish Arguments" />
+                  <TextBox x:Name="ExtraArgumentsBox" PlaceholderText="-CustomSwitch value" TextChanged="Option_TextChanged" />
+                </StackPanel>
+              </ScrollViewer>
+            </Border>
+          </Grid>
+
+          <Grid Grid.Row="2"
+                RowDefinitions="Auto,*"
+                RowSpacing="8">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Classes="section" Text="Publish Plan" />
+                <TextBlock x:Name="RunStatusText" Classes="status" Text="Idle" />
+              </StackPanel>
+              <Button Grid.Column="1" Content="Refresh Preview" Click="RefreshPreview_Click" />
+              <Button Grid.Column="2" x:Name="RunButton" Content="Run Publish" Click="RunPublish_Click" />
+              <Button Grid.Column="3" x:Name="StopButton" Content="Stop" IsEnabled="False" Click="StopPublish_Click" />
+            </Grid>
+            <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="10">
+              <TextBox x:Name="CommandPreviewBox" Classes="command" />
+              <TextBox x:Name="OutputLogBox" Grid.Column="1" Classes="log" />
+            </Grid>
+          </Grid>
+        </Grid>
+      </Grid>
+    </Grid>
+
+    <Border x:Name="ProgressOverlay"
+            IsVisible="False"
+            Background="#99071320">
+      <Grid HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Width="660"
+            MaxWidth="760">
+        <Border Classes="modal">
+          <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="4">
+                <TextBlock x:Name="ProgressTitleText" FontSize="22" FontWeight="SemiBold" Text="Publishing" />
+                <TextBlock x:Name="ProgressDetailText" Classes="muted" Text="Preparing release workflow." />
+              </StackPanel>
+              <TextBlock x:Name="ProgressExitText" Grid.Column="1" Classes="status" Text="Running" />
+            </Grid>
+            <ProgressBar x:Name="ProgressBar" Grid.Row="1" IsIndeterminate="True" Height="8" />
+            <Border Grid.Row="2" Classes="summary">
+              <TextBlock x:Name="ProgressCommandText" TextWrapping="Wrap" />
+            </Border>
+            <TextBox x:Name="ProgressLogBox" Grid.Row="3" Classes="log" MinHeight="220" />
+            <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+              <TextBlock x:Name="ProgressFooterText" Classes="muted" VerticalAlignment="Center" Text="Streaming output..." />
+              <Button Grid.Column="1" x:Name="OverlayStopButton" Content="Stop" Click="StopPublish_Click" />
+              <Button Grid.Column="2" x:Name="OverlayCloseButton" Content="Dismiss" IsEnabled="False" Click="DismissProgress_Click" />
+            </Grid>
+          </Grid>
+        </Border>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
