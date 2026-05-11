@@ -354,7 +354,7 @@ function Test-DragonPowerShellSyntax {
         }
     }
 
-    $failed = $results | Where-Object { $_.ErrorCount -gt 0 }
+    $failed = @($results | Where-Object { $_.ErrorCount -gt 0 })
     if ($failed.Count -gt 0) {
         $details = ($failed | ForEach-Object { "$($_.Path): $($_.Errors)" }) -join [Environment]::NewLine
         throw "PowerShell syntax check failed:$([Environment]::NewLine)$details"
@@ -374,4 +374,3 @@ Export-ModuleMember -Function @(
     'Test-DragonPowerShellSyntax',
     'Test-DragonAppContract'
 )
-

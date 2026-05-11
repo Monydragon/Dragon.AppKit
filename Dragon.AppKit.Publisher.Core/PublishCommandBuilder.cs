@@ -55,6 +55,7 @@ public sealed class PublishCommandBuilder
         AddParameter(project, args, "IosRuntimeIdentifier", options.IosRuntimeIdentifier);
         AddParameter(project, args, "IosSigningMode", options.IosSigningMode);
         AddBoolParameter(project, args, "IosArchiveOnBuild", options.IosArchiveOnBuild);
+        AddParameter(project, args, "ReleaseRoot", options.ArtifactOutputDirectory);
         AddParameter(project, args, "ArtifactOutputDirectory", options.ArtifactOutputDirectory);
         AddSwitch(project, args, "SkipTests", options.SkipTests);
         AddSwitch(project, args, "RunScreenshotQa", options.RunScreenshotQa);

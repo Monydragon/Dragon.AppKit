@@ -1,0 +1,346 @@
+Dragon AppKit LLM Prompts Source
+================================
+
+Purpose
+-------
+This is the living prompt source for Dragon.AppKit. Use it as shared context for future LLM sessions, task planning, and follow-up implementation work.
+
+Future prompts should start by reading this file, then cross-check the current repo state before editing. When a prompt is completed, append or update the relevant entry with:
+
+- the user-facing prompt or reconstructed task
+- status
+- implementation notes
+- changed areas
+- validation run
+- known follow-up work
+
+Prompt Handling Rules
+---------------------
+Use these rules for future LLM sessions that work in this repo:
+
+- Keep this document current when the user adds prompts, changes direction, or asks for durable project context.
+- Treat Dragon.AppKit as shared infrastructure for many Dragon apps unless the prompt explicitly targets one product repo.
+- For Publisher GUI changes, keep core behavior in Dragon.AppKit.Publisher.Core where it can be tested without launching Avalonia.
+- For release and publish changes, check version metadata, generated release folders, release-manifest.json, and upload source paths for consistency.
+- For UI changes, do a screenshot or visual pass when possible, especially when changing layout, controls, or publish status feedback.
+- Prefer tests for command generation, project detection, release verification, and metadata updates.
+- Preserve PowerShell script parameter compatibility: the Publisher should only emit parameters supported by the selected script.
+
+Repository Context
+------------------
+Dragon.AppKit is the shared baseline for Dragon local-first Avalonia apps. The repo currently contains:
+
+- a Dragon app contract and schema: dragon-app.json / dragon-app.schema.json
+- a reusable PowerShell release and QA module: build/DragonRelease
+- an installable dotnet template: templates/dragon-app
+- template docs for setup, data ownership, QA, release, testing, assets, and troubleshooting
+- helper scripts for template install, app creation, validation, and publisher launch
+- an Avalonia Publisher GUI with core detection, version update, publish-plan, and itch.io upload support
+
+Current validation loop:
+
+- dotnet test
+- pwsh -NoProfile -File .\scripts\test-template.ps1
+- powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-template.ps1 when pwsh is not installed
+
+Prompt 1 - Dragon AppKit Shared Baseline
+----------------------------------------
+Status: Implemented
+
+Source note: Reconstructed from the implemented repo state and README because the original chat prompt is not stored in the repository.
+
+Task:
+Create Dragon.AppKit as the shared baseline for the Dragon family of local-first Avalonia apps. It should provide a reusable app contract, release/QA tooling, installable app template, and baseline documentation that product repos can adopt without copying one-off setup work.
+
+Primary goals:
+
+- define the Dragon app contract with product name, short name, namespace, app id, environment prefix, version, Android version code, supported targets, paths, release defaults, and publishing metadata
+- add a JSON schema for the contract
+- create a dotnet new template for Dragon local-first Avalonia apps
+- include Desktop, Android, and Browser heads in the template
+- include layered app projects for app UI, application services, infrastructure, core model, and tests
+- include baseline docs for developer setup, data ownership, QA, release builds, testing, assets, and troubleshooting
+- create reusable PowerShell release and QA helpers under build/DragonRelease
+- provide scripts for installing the template, creating a new Dragon app, and validating the template
+- document how product repos find AppKit through DRAGON_APPKIT_ROOT or a sibling Dragon.AppKit directory
+
+Implemented areas:
+
+- README.md documents the template install flow, product repo contract, validation loop, and Publisher GUI entry point.
+- dragon-app.schema.json defines the shared app contract.
+- build/DragonRelease/DragonRelease.psm1 provides contract validation, release version helpers, Android version-code helpers, QA session creation, release manifests, release candidate gates, and PowerShell syntax checks.
+- templates/dragon-app contains the installable template and app skeleton.
+- docs-template mirrors baseline docs that can be copied or synchronized into product repos.
+- scripts/install-template.ps1, scripts/new-dragon-app.ps1, and scripts/test-template.ps1 support local use and validation.
+
+Future prompt context:
+When extending Prompt 1 work, preserve AppKit as a shared baseline rather than turning it into a product-specific app. Keep new conventions generic enough for multiple Dragon apps, but concrete enough that product repos can use them immediately.
+
+Likely follow-up tasks:
+
+- add CI for dotnet tests and template validation
+- add schema validation to the test-template script
+- add stronger docs synchronization tooling between docs-template and templates/dragon-app/docs
+- add release artifact layout examples for Desktop, Browser, Android, iOS, Windows, Linux, and macOS
+- expand template tests as more platform heads are added
+
+Prompt 2 - Dragon Publisher GUI
+-------------------------------
+Status: Implemented
+
+Source note: Reconstructed from the implemented repo state and README because the original chat prompt is not stored in the repository.
+
+Task:
+Add a Dragon Publisher GUI that helps publish Dragon apps and nearby .NET/Avalonia/KNI-style project roots from a workspace. The GUI should detect projects, expose release options, update version metadata, preview the publish command, run it with live output, and optionally append an itch.io butler upload step.
+
+Primary goals:
+
+- create an Avalonia desktop publishing utility launched through scripts/run-publisher.ps1
+- scan a workspace for Dragon apps plus broader .NET, Avalonia, and KNI/MonoGame-style roots
+- detect supported heads from project names, SDKs, target frameworks, and package references
+- read dragon-app.json when present
+- detect publish scripts and supported PowerShell parameters
+- show editable release options such as configuration, version, Android version code, platform targets, desktop runtimes, signing modes, artifact output directory, QA toggles, and extra arguments
+- write version metadata across dragon-app.json, Directory.Build.props, and relevant project files
+- preview the generated publish plan before execution
+- run the editable command with live output
+- optionally append an itch.io upload using butler with user, game, channel, source folder, and extra args
+
+Implemented areas:
+
+- Dragon.AppKit.Publisher is the Avalonia GUI project.
+- Dragon.AppKit.Publisher.Core contains project discovery, project detection, script parameter reading, publish option modeling, command building, and version metadata updates.
+- Dragon.AppKit.Publisher.Tests covers detection, command generation, KNI-style discovery, workspace discovery, version metadata updates, and butler command appending.
+- README.md documents the GUI launch script and publisher behavior.
+- dragon-app.schema.json includes publishing.itch metadata fields.
+
+Future prompt context:
+When extending Prompt 2 work, keep publish command generation in Dragon.AppKit.Publisher.Core so it stays testable without launching the GUI. UI changes should reflect existing Avalonia patterns in MainWindow.axaml and MainWindow.axaml.cs unless the UI is intentionally refactored.
+
+Likely follow-up tasks:
+
+- persist recent workspace paths and publisher settings
+- add a dry-run execution mode that never writes version metadata or runs publish commands
+- add structured command logs under artifacts or docs/qa/sessions
+- validate butler path and show actionable errors before execution
+- support per-platform output folders and channel inference
+- add cancellation and clearer process state transitions for long publish runs
+- split MainWindow.axaml.cs into smaller view-model or service classes if the GUI grows further
+
+Prompt 3 - Publisher 0.1.0, Screenshot QA, and Release Version Verification
+----------------------------------------------------------------------------
+Status: Implemented
+
+User prompt:
+alright now working on LLM Prompts Source add my prompts to that as needed and add more promots and details to have more robust handling I want to improve this app do screenshot passes add version as 0.1.0 for this Publisher, I want the publisher to scan latest releases folder to verify and make sure that version number is consistent
+
+Task:
+Keep this prompt source as the durable task ledger, make future handling more robust, make the Publisher clearly identify itself as version 0.1.0, support screenshot QA passes through publish scripts, and add Publisher release-folder scanning so the selected version can be checked against the latest generated release.
+
+Primary goals:
+
+- update this prompt source with the new user prompt and future handling rules
+- keep the Publisher on version 0.1.0
+- show the Publisher version in the running app
+- ensure screenshot QA can be passed from the Publisher into template publish scripts
+- scan the latest release folder under artifacts/releases, or the selected release output folder when provided
+- compare the selected version to release folder naming and release-manifest.json version/tag evidence
+- show the release version check in the Publisher UI
+- verify release version consistency after a successful publish and mark the publish failed if the latest release evidence conflicts with the selected version
+- add tests for release root command generation and latest release version scanning
+
+Implemented areas:
+
+- Directory.Build.props already defines version 0.1.0 for the Publisher and related assemblies.
+- Dragon.AppKit.Publisher window title now displays Dragon Publisher 0.1.0.
+- Dragon.AppKit.Publisher.Core has ReleaseVersionScanner for latest release folder checks.
+- Publisher UI has a Verify Latest release version check beside the version field.
+- Publish completion runs release version verification and treats mismatched evidence as a blocking failure.
+- PublishCommandBuilder maps Artifact Output Directory to ReleaseRoot when a publish script supports ReleaseRoot.
+- templates/dragon-app/scripts/publish-releases.ps1 supports screenshot, clean-slate, and performance QA switches, plus more Publisher release options.
+- PublisherCoreTests cover ReleaseRoot command mapping and release version scan consistency/mismatch cases.
+
+Validation:
+
+- dotnet test
+- dotnet build .\Dragon.AppKit.Publisher\Dragon.AppKit.Publisher.csproj
+- powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-template.ps1
+- Test-DragonPowerShellSyntax against templates\dragon-app\scripts
+- templates\dragon-app\scripts\screenshot-qa.ps1 -Version 0.1.0 -PlanOnly
+
+Future prompt context:
+Release verification is evidence-based. Prefer release-manifest.json and versioned folder names. Missing release folders should not block a first release, but mismatched evidence should block or fail the publish workflow.
+
+Known follow-up tasks:
+
+- add a real screenshot capture runner instead of only generating planned screenshot QA manifests
+- add a dry-run mode that performs release verification without launching publish commands
+- make release verification visible as structured status instead of a single text line
+- add an option to verify a specific release folder before itch.io upload
+- persist Publisher settings and recently scanned workspace roots
+
+Prompt 4 - Real Screenshot Capture and Visual QA
+------------------------------------------------
+Status: Proposed
+
+Task:
+Turn screenshot QA from a planned manifest into a real repeatable screenshot pass for Publisher and generated Dragon apps.
+
+Primary goals:
+
+- capture desktop screenshots for key screens and common viewport sizes
+- write screenshots under artifacts/qa/screenshots/v{version}
+- keep screenshot manifests with file paths, viewport sizes, timestamps, and pass/fail status
+- add a manual review checklist for layout clipping, overlapping controls, and missing primary actions
+- make screenshot QA callable from publish-releases.ps1 and visible from the Publisher output log
+
+Future prompt context:
+Prefer a practical screenshot runner that can work on Windows first, then leave clean extension points for Browser and mobile targets.
+
+Prompt 5 - Publisher Release Preflight and Dry Run
+--------------------------------------------------
+Status: Proposed
+
+Task:
+Add a Publisher dry-run/preflight mode that verifies release settings, version consistency, script support, butler configuration, and output paths without mutating files or running publish commands.
+
+Primary goals:
+
+- validate version metadata consistency before publish
+- verify the exact release folder intended for itch.io upload
+- validate butler path and itch target fields before upload
+- show pass/warn/fail preflight sections in the GUI
+- avoid writing dragon-app.json, project files, or artifacts during dry run
+
+Future prompt context:
+Dry run should be implemented in core services first, then surfaced in the GUI. It should reuse ReleaseVersionScanner rather than duplicating release-folder parsing.
+
+Prompt 6 - Quick Pipeline Workflow, Queue, Scope, Progress, and ETA
+-------------------------------------------------------------------
+Status: Implemented
+
+User prompt:
+I want the workflow to be straightforward and quick to be able to publish and deploy, I want the process to show a nice looking progress bar and show each step properly with a good ETA shown and more functionality I would like to be able to queue up builds and publishing also so I can publish on multiple project I want to be able to scope a project so that I can at a glance edit easily. let's also add 5 tasks to turn this into a professional pipeline tool
+
+Task:
+Make the Publisher workflow feel more like a pipeline tool by adding quick project scoping, an in-memory publish queue for multiple projects, and a progress overlay that shows stages, percentage, and ETA.
+
+Primary goals:
+
+- show a concise project scope summary for the selected project and current publish options
+- let the user add the selected project/options/command to a queue
+- run queued builds and publishes sequentially across multiple projects
+- show queue item status as Queued, Running, Complete, or Failed
+- stop the queue after a failed item to avoid cascading bad deploys
+- replace indeterminate progress with staged progress, percentage, elapsed time, and ETA
+- keep current single-project publish behavior intact
+
+Implemented areas:
+
+- Publisher sidebar has a Queue section with Add, Remove, Clear, and Run Queue actions.
+- Selected project header shows a scope summary with configuration, version, targets, runtimes, and release path.
+- Publish overlay uses staged progress with queue position, step number, percent, ETA, and elapsed time.
+- Single publish and queued publish share the same publish-plan execution path.
+
+Validation:
+
+- dotnet build .\Dragon.AppKit.Publisher\Dragon.AppKit.Publisher.csproj
+- dotnet test
+
+Future prompt context:
+The queue is currently in-memory for the active Publisher session. Persisting queues, saving named pipeline profiles, and adding preflight gates should be implemented as explicit follow-up tasks.
+
+Professional Pipeline Tool Tasks
+--------------------------------
+
+Prompt 7 - Persistent Pipeline Profiles
+Status: Proposed
+
+Task:
+Persist named pipeline profiles per project so common publish/deploy scopes can be selected quickly.
+
+Primary goals:
+
+- save and load publish option sets
+- support per-project defaults for version, targets, runtimes, QA, output paths, and itch settings
+- keep profile files in a predictable local app data path or repo-local config path
+- expose profile selection in the Publisher without hiding direct option edits
+
+Prompt 8 - Structured Preflight Gates
+Status: Proposed
+
+Task:
+Add a preflight gate system that validates publish readiness before any build or deploy command runs.
+
+Primary goals:
+
+- validate version metadata, release folder state, script parameters, signing settings, butler path, and upload source paths
+- show pass, warning, and fail sections in the UI
+- block publish on hard failures unless explicitly overridden
+- write a preflight report to artifacts/publisher-logs
+
+Prompt 9 - Pipeline Stage Telemetry
+Status: Proposed
+
+Task:
+Record structured telemetry for every pipeline run so progress, ETA, duration, failures, and historical timing become more accurate.
+
+Primary goals:
+
+- record per-stage start/end times and exit codes
+- calculate future ETA from recent historical runs when available
+- write machine-readable run summaries under artifacts/publisher-logs
+- surface slow stages and failed stages clearly in the Publisher UI
+
+Prompt 10 - Deployment Adapters
+Status: Proposed
+
+Task:
+Generalize deployment beyond itch.io by adding deployment adapter support.
+
+Primary goals:
+
+- keep itch.io butler as the first adapter
+- add adapter contracts for local folder copy, GitHub release upload, and custom PowerShell deploy commands
+- validate adapter settings in preflight
+- show deploy targets per queued item
+
+Prompt 11 - Pipeline Dashboard
+Status: Proposed
+
+Task:
+Add a professional dashboard view for pipeline history, queued work, current status, recent artifacts, and release readiness.
+
+Primary goals:
+
+- show all discovered projects with latest version, latest release folder, release consistency, and queued status
+- show recent successful and failed runs
+- provide quick actions for open artifacts, logs, docs, and release folders
+- keep dense operational layout for repeated publishing work
+
+Prompt Entry Template
+---------------------
+Prompt N - Short Title
+Status: Proposed | In Progress | Implemented | Superseded
+
+Source note:
+
+Task:
+
+Primary goals:
+
+- 
+
+Implemented areas:
+
+- 
+
+Validation:
+
+- 
+
+Future prompt context:
+
+Known follow-up tasks:
+
+- 

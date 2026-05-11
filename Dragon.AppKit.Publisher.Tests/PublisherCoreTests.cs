@@ -230,6 +230,113 @@ public sealed class PublisherCoreTests
         Assert.Contains("'dragon/example:windows'", command);
     }
 
+    [Fact]
+    public void CommandBuilder_MapsArtifactOutputDirectoryToReleaseRootWhenScriptSupportsIt()
+    {
+        var repo = CreateRepo();
+        File.WriteAllText(Path.Combine(repo, "dragon-app.json"), """
+        {
+          "productName": "Dragon Example",
+          "shortName": "DragonExample",
+          "namespace": "DragonExample",
+          "appId": "com.dragonexample.app",
+          "envPrefix": "DRAGON_EXAMPLE",
+          "version": "0.1.0",
+          "androidVersionCode": 10,
+          "supportedTargets": ["Desktop"]
+        }
+        """);
+        Directory.CreateDirectory(Path.Combine(repo, "scripts"));
+        File.WriteAllText(Path.Combine(repo, "scripts", "publish-releases.ps1"), """
+        param(
+          [string]$Version,
+          [string]$ReleaseRoot
+        )
+        """);
+
+        var project = new ProjectDetector().Detect(repo);
+        var options = new PublishOptions
+        {
+            Version = "0.1.0",
+            ArtifactOutputDirectory = "artifacts\\releases\\v0.1.0"
+        };
+
+        var command = new PublishCommandBuilder().Build(project, options).DisplayText;
+
+        Assert.Contains("-ReleaseRoot 'artifacts\\releases\\v0.1.0'", command);
+        Assert.DoesNotContain("ArtifactOutputDirectory", command);
+    }
+
+    [Fact]
+    public void ReleaseVersionScanner_VerifiesLatestReleaseFolderAndManifest()
+    {
+        var repo = CreateRepo();
+        File.WriteAllText(Path.Combine(repo, "dragon-app.json"), """
+        {
+          "productName": "Dragon Example",
+          "shortName": "DragonExample",
+          "namespace": "DragonExample",
+          "appId": "com.dragonexample.app",
+          "envPrefix": "DRAGON_EXAMPLE",
+          "version": "0.1.0",
+          "androidVersionCode": 10,
+          "supportedTargets": ["Desktop"]
+        }
+        """);
+        var oldRelease = Path.Combine(repo, "artifacts", "releases", "v0.0.9");
+        var latestRelease = Path.Combine(repo, "artifacts", "releases", "v0.1.0");
+        Directory.CreateDirectory(oldRelease);
+        Directory.CreateDirectory(latestRelease);
+        File.WriteAllText(Path.Combine(latestRelease, "release-manifest.json"), """
+        {
+          "version": "0.1.0",
+          "tag": "v0.1.0"
+        }
+        """);
+        Directory.SetLastWriteTimeUtc(oldRelease, DateTime.UtcNow.AddHours(-2));
+        Directory.SetLastWriteTimeUtc(latestRelease, DateTime.UtcNow);
+
+        var project = new ProjectDetector().Detect(repo);
+        var result = new ReleaseVersionScanner().ScanLatest(project, PublishOptions.FromProject(project));
+
+        Assert.Equal(ReleaseVersionScanStatus.Consistent, result.Status);
+        Assert.False(result.BlocksPublish);
+        Assert.EndsWith("v0.1.0", result.ScannedReleasePath);
+    }
+
+    [Fact]
+    public void ReleaseVersionScanner_FlagsLatestReleaseVersionMismatch()
+    {
+        var repo = CreateRepo();
+        File.WriteAllText(Path.Combine(repo, "dragon-app.json"), """
+        {
+          "productName": "Dragon Example",
+          "shortName": "DragonExample",
+          "namespace": "DragonExample",
+          "appId": "com.dragonexample.app",
+          "envPrefix": "DRAGON_EXAMPLE",
+          "version": "0.1.0",
+          "androidVersionCode": 10,
+          "supportedTargets": ["Desktop"]
+        }
+        """);
+        var latestRelease = Path.Combine(repo, "artifacts", "releases", "v0.2.0");
+        Directory.CreateDirectory(latestRelease);
+        File.WriteAllText(Path.Combine(latestRelease, "release-manifest.json"), """
+        {
+          "version": "0.2.0",
+          "tag": "v0.2.0"
+        }
+        """);
+
+        var project = new ProjectDetector().Detect(repo);
+        var result = new ReleaseVersionScanner().ScanLatest(project, PublishOptions.FromProject(project));
+
+        Assert.Equal(ReleaseVersionScanStatus.Mismatch, result.Status);
+        Assert.True(result.BlocksPublish);
+        Assert.Contains("Expected 0.1.0", result.Message);
+    }
+
     private static string CreateRepo()
     {
         var path = Path.Combine(Path.GetTempPath(), "DragonPublisherTests", Guid.NewGuid().ToString("N"));

@@ -48,6 +48,8 @@ Run the publishing utility:
 .\scripts\run-publisher.ps1
 ```
 
-The utility scans a workspace for Dragon apps plus broader .NET/Avalonia/KNI-style project roots, detects supported heads and publish-script parameters, lets you edit release options, writes version metadata across app contracts and project files, previews the generated publish plan, and runs the editable command with live output.
+The utility scans a workspace for Dragon apps plus broader .NET/Avalonia/KNI-style project roots, detects supported heads and publish-script parameters, lets you edit release options, writes version metadata across app contracts and project files, checks latest release-folder version evidence, previews the generated publish plan, and runs the editable command with live output.
+
+For multi-project release work, add scoped projects to the in-memory queue and run them sequentially. The progress overlay shows queue position, publish stage, percentage, elapsed time, and ETA.
 
 It can also append an itch.io upload step using butler. Configure the butler path, itch user/game/channel, and source folder in the GUI, then enable `Publish with butler after build`.

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Text;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -14,16 +15,23 @@ public partial class MainWindow : Window
     private readonly ProjectDetector _detector = new();
     private readonly PublishCommandBuilder _commandBuilder = new();
     private readonly VersionMetadataUpdater _versionUpdater = new();
+    private readonly ReleaseVersionScanner _releaseVersionScanner = new();
     private readonly object _logFileLock = new();
     private readonly List<DragonProject> _projects = [];
+    private readonly List<PublishQueueItem> _publishQueue = [];
     private DragonProject? _selectedProject;
     private bool _isLoading;
     private Process? _runningProcess;
     private string? _currentLogFile;
+    private DateTime _progressStartedUtc;
+    private int _progressStepIndex;
+    private int _progressStepCount;
+    private string _progressQueueContext = string.Empty;
 
     public MainWindow()
     {
         InitializeComponent();
+        Title = $"Dragon Publisher {GetPublisherVersion()}";
         InitializeControls();
         WorkspacePathBox.Text = FindDefaultWorkspaceRoot();
         ScanWorkspace();
@@ -142,6 +150,102 @@ public partial class MainWindow : Window
         ApplyVersionMetadata(ReadOptionsFromUi(), refreshProject: true);
     }
 
+    private void VerifyReleaseVersion_Click(object? sender, RoutedEventArgs e)
+    {
+        VerifyReleaseVersion(logResult: true);
+    }
+
+    private void AddSelectedToQueue_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selectedProject is null)
+        {
+            AppendLog("Select a project before adding it to the queue.");
+            return;
+        }
+
+        try
+        {
+            var options = ReadOptionsFromUi();
+            var command = _commandBuilder.Build(_selectedProject, options);
+            _publishQueue.Add(new PublishQueueItem(_selectedProject, CloneOptions(options), command.DisplayText));
+            RefreshQueueList();
+            AppendLog($"Queued {_selectedProject.DisplayName} {FirstNonBlank(options.Version, _selectedProject.Version, "unversioned")}.");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"Could not add project to queue: {ex.Message}");
+        }
+    }
+
+    private void RemoveQueued_Click(object? sender, RoutedEventArgs e)
+    {
+        if (QueueList.SelectedItem is not PublishQueueItem item)
+        {
+            return;
+        }
+
+        _publishQueue.Remove(item);
+        RefreshQueueList();
+    }
+
+    private void ClearQueue_Click(object? sender, RoutedEventArgs e)
+    {
+        _publishQueue.Clear();
+        RefreshQueueList();
+    }
+
+    private async void RunQueue_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_runningProcess is not null)
+        {
+            AppendLog("A publish process is already running.");
+            return;
+        }
+
+        if (_publishQueue.Count == 0)
+        {
+            AppendLog("Queue is empty. Add one or more scoped projects first.");
+            return;
+        }
+
+        OutputLogBox.Text = string.Empty;
+        SetPublishControlsRunning(true);
+
+        try
+        {
+            for (var index = 0; index < _publishQueue.Count; index++)
+            {
+                var item = _publishQueue[index];
+                item.Status = "Running";
+                RefreshQueueList();
+
+                var exitCode = await RunPublishPlanAsync(
+                    item.Project,
+                    item.Options,
+                    item.CommandText,
+                    $"Publishing {item.Project.DisplayName}",
+                    clearOutput: false,
+                    queueIndex: index + 1,
+                    queueTotal: _publishQueue.Count);
+
+                item.Status = exitCode == 0 ? "Complete" : "Failed";
+                RefreshQueueList();
+
+                if (exitCode != 0)
+                {
+                    AppendLog($"Queue stopped after {item.Project.DisplayName} failed.");
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            _runningProcess = null;
+            SetPublishControlsRunning(false);
+            OverlayCloseButton.IsEnabled = true;
+        }
+    }
+
     private async void TestButler_Click(object? sender, RoutedEventArgs e)
     {
         var butlerPath = FirstNonBlank(ButlerPathBox.Text, "butler");
@@ -178,29 +282,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        OutputLogBox.Text = string.Empty;
-        ProgressLogBox.Text = string.Empty;
-        _currentLogFile = CreatePublisherLogFile(_selectedProject.RootPath);
-        ShowProgress("Publishing", "Preparing release workflow.", commandText);
-        AppendLog($"> {commandText}");
-        AppendLog(string.Empty);
-
-        RunButton.IsEnabled = false;
-        StopButton.IsEnabled = true;
-        OverlayStopButton.IsEnabled = true;
-        OverlayCloseButton.IsEnabled = false;
-
+        SetPublishControlsRunning(true);
         try
         {
-            if (options.UpdateVersionMetadata)
-            {
-                SetProgressDetail("Writing version metadata.");
-                ApplyVersionMetadata(options, refreshProject: false);
-            }
-
-            SetProgressDetail("Running publish plan.");
-            var exitCode = await RunPowerShellAsync(_selectedProject.RootPath, commandText);
-            CompleteProgress(exitCode);
+            var exitCode = await RunPublishPlanAsync(_selectedProject, options, commandText, "Publishing", clearOutput: true);
             if (options.UpdateVersionMetadata)
             {
                 RefreshSelectedProject();
@@ -214,9 +299,7 @@ public partial class MainWindow : Window
         finally
         {
             _runningProcess = null;
-            RunButton.IsEnabled = true;
-            StopButton.IsEnabled = false;
-            OverlayStopButton.IsEnabled = false;
+            SetPublishControlsRunning(false);
             OverlayCloseButton.IsEnabled = true;
         }
     }
@@ -366,6 +449,7 @@ public partial class MainWindow : Window
         ItchExtraArgumentsBox.Text = options.ItchExtraArguments;
 
         SetPlatformChecks(options);
+        UpdateProjectScope(options);
 
         _isLoading = false;
         RefreshCommandPreview();
@@ -405,8 +489,11 @@ public partial class MainWindow : Window
 
         try
         {
-            var command = _commandBuilder.Build(_selectedProject, ReadOptionsFromUi());
+            var options = ReadOptionsFromUi();
+            var command = _commandBuilder.Build(_selectedProject, options);
             CommandPreviewBox.Text = command.DisplayText;
+            UpdateProjectScope(options);
+            UpdateReleaseVersionCheck();
         }
         catch (Exception ex)
         {
@@ -460,6 +547,64 @@ public partial class MainWindow : Window
         return options;
     }
 
+    private async Task<int> RunPublishPlanAsync(
+        DragonProject project,
+        PublishOptions options,
+        string commandText,
+        string title,
+        bool clearOutput,
+        int queueIndex = 1,
+        int queueTotal = 1)
+    {
+        if (clearOutput)
+        {
+            OutputLogBox.Text = string.Empty;
+        }
+
+        ProgressLogBox.Text = string.Empty;
+        _currentLogFile = CreatePublisherLogFile(project.RootPath);
+        ShowProgress(title, "Preparing release workflow.", commandText, stepCount: 5, queueIndex, queueTotal);
+        SetProgressStage(1, 8, "Preparing release workflow.");
+        AppendLog($"> {commandText}");
+        AppendLog(string.Empty);
+
+        try
+        {
+            if (options.UpdateVersionMetadata)
+            {
+                SetProgressStage(2, 25, "Writing version metadata.");
+                ApplyVersionMetadata(project, options, refreshProject: false);
+            }
+            else
+            {
+                SetProgressStage(2, 25, "Skipping version metadata write.");
+            }
+
+            SetProgressStage(3, 55, "Running publish plan.");
+            var exitCode = await RunPowerShellAsync(project.RootPath, commandText);
+            if (exitCode == 0)
+            {
+                SetProgressStage(4, 85, "Verifying latest release version.");
+                var releaseVersionCheck = VerifyReleaseVersion(project, options, logResult: true);
+                if (releaseVersionCheck?.BlocksPublish == true)
+                {
+                    exitCode = 1;
+                }
+            }
+
+            SetProgressStage(5, exitCode == 0 ? 100 : Math.Max(ProgressBar.Value, 90), exitCode == 0 ? "Release workflow complete." : "Release workflow failed.");
+            CompleteProgress(exitCode);
+            return exitCode;
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"Publish failed before process start: {ex.Message}");
+            SetProgressStage(Math.Max(_progressStepIndex, 1), Math.Max(ProgressBar.Value, 8), "Release workflow failed before process start.");
+            CompleteProgress(1);
+            return 1;
+        }
+    }
+
     private VersionUpdateResult ApplyVersionMetadata(PublishOptions options, bool refreshProject)
     {
         if (_selectedProject is null)
@@ -467,16 +612,21 @@ public partial class MainWindow : Window
             return new VersionUpdateResult([]);
         }
 
-        var result = _versionUpdater.Apply(_selectedProject, options);
+        return ApplyVersionMetadata(_selectedProject, options, refreshProject);
+    }
+
+    private VersionUpdateResult ApplyVersionMetadata(DragonProject project, PublishOptions options, bool refreshProject)
+    {
+        var result = _versionUpdater.Apply(project, options);
         if (result.Changed)
         {
             AppendLog("Updated version metadata:");
             foreach (var file in result.UpdatedFiles)
             {
-                AppendLog($"  {Path.GetRelativePath(_selectedProject.RootPath, file)}");
+                AppendLog($"  {Path.GetRelativePath(project.RootPath, file)}");
             }
 
-            if (refreshProject)
+            if (refreshProject && _selectedProject?.RootPath.Equals(project.RootPath, StringComparison.OrdinalIgnoreCase) == true)
             {
                 RefreshSelectedProject();
             }
@@ -487,6 +637,48 @@ public partial class MainWindow : Window
         }
 
         return result;
+    }
+
+    private ReleaseVersionScanResult? VerifyReleaseVersion(bool logResult)
+    {
+        if (_selectedProject is null)
+        {
+            ReleaseVersionCheckText.Text = "Select a project before verifying releases.";
+            return null;
+        }
+
+        return VerifyReleaseVersion(_selectedProject, ReadOptionsFromUi(), logResult);
+    }
+
+    private ReleaseVersionScanResult? VerifyReleaseVersion(DragonProject project, PublishOptions options, bool logResult)
+    {
+        var result = _releaseVersionScanner.ScanLatest(project, options);
+        if (_selectedProject?.RootPath.Equals(project.RootPath, StringComparison.OrdinalIgnoreCase) == true)
+        {
+            ReleaseVersionCheckText.Text = result.Message;
+        }
+
+        if (logResult)
+        {
+            AppendLog(result.Message);
+            foreach (var item in result.Evidence)
+            {
+                AppendLog($"  {item.Source}: {item.Version}");
+            }
+        }
+
+        return result;
+    }
+
+    private void UpdateReleaseVersionCheck()
+    {
+        if (_selectedProject is null)
+        {
+            ReleaseVersionCheckText.Text = "Select a project before verifying releases.";
+            return;
+        }
+
+        ReleaseVersionCheckText.Text = _releaseVersionScanner.ScanLatest(_selectedProject, ReadOptionsFromUi()).Message;
     }
 
     private void RefreshSelectedProject()
@@ -580,23 +772,41 @@ public partial class MainWindow : Window
         return new Process { StartInfo = startInfo, EnableRaisingEvents = true };
     }
 
-    private void ShowProgress(string title, string detail, string commandText)
+    private void ShowProgress(string title, string detail, string commandText, int stepCount, int queueIndex, int queueTotal)
     {
+        _progressStartedUtc = DateTime.UtcNow;
+        _progressStepIndex = 0;
+        _progressStepCount = stepCount;
+        _progressQueueContext = queueTotal > 1 ? $"Queue {queueIndex}/{queueTotal} - " : string.Empty;
+
         ProgressOverlay.IsVisible = true;
-        ProgressBar.IsIndeterminate = true;
+        ProgressBar.IsIndeterminate = false;
+        ProgressBar.Minimum = 0;
+        ProgressBar.Maximum = 100;
+        ProgressBar.Value = 0;
         ProgressTitleText.Text = title;
         ProgressDetailText.Text = detail;
-        ProgressExitText.Text = "Running";
-        ProgressFooterText.Text = "Streaming output...";
+        ProgressExitText.Text = "0%";
+        ProgressFooterText.Text = $"{_progressQueueContext}Step 0/{stepCount} - ETA calculating";
         ProgressCommandText.Text = commandText;
         RunStatusText.Text = "Running";
     }
 
     private void SetProgressDetail(string detail)
     {
+        SetProgressStage(Math.Max(_progressStepIndex, 1), Math.Max(ProgressBar.Value, 1), detail);
+    }
+
+    private void SetProgressStage(int stepIndex, double percent, string detail)
+    {
+        _progressStepIndex = Math.Clamp(stepIndex, 1, Math.Max(_progressStepCount, 1));
         Dispatcher.UIThread.Post(() =>
         {
-            ProgressDetailText.Text = detail;
+            var boundedPercent = Math.Clamp(percent, 0, 100);
+            ProgressBar.Value = boundedPercent;
+            ProgressDetailText.Text = $"Step {_progressStepIndex}/{_progressStepCount}: {detail}";
+            ProgressExitText.Text = $"{boundedPercent:0}%";
+            ProgressFooterText.Text = $"{_progressQueueContext}Step {_progressStepIndex}/{_progressStepCount} - ETA {FormatEta(boundedPercent)}";
             RunStatusText.Text = detail;
         });
     }
@@ -606,11 +816,11 @@ public partial class MainWindow : Window
         Dispatcher.UIThread.Post(() =>
         {
             ProgressBar.IsIndeterminate = false;
-            ProgressBar.Value = exitCode == 0 ? 100 : 0;
+            ProgressBar.Value = exitCode == 0 ? 100 : ProgressBar.Value;
             ProgressExitText.Text = exitCode == 0 ? "Complete" : "Failed";
             ProgressTitleText.Text = exitCode == 0 ? "Publish Complete" : "Publish Failed";
             ProgressDetailText.Text = exitCode == 0 ? "The release workflow finished." : "The release workflow exited with errors.";
-            ProgressFooterText.Text = $"Exit code {exitCode}";
+            ProgressFooterText.Text = $"{_progressQueueContext}Exit code {exitCode} - Elapsed {FormatDuration(DateTime.UtcNow - _progressStartedUtc)}";
             RunStatusText.Text = exitCode == 0 ? "Complete" : "Failed";
         });
     }
@@ -709,6 +919,75 @@ public partial class MainWindow : Window
         });
     }
 
+    private void RefreshQueueList()
+    {
+        QueueList.ItemsSource = null;
+        QueueList.ItemsSource = _publishQueue;
+        QueueCountText.Text = $"{_publishQueue.Count} queued";
+    }
+
+    private void SetPublishControlsRunning(bool running)
+    {
+        RunButton.IsEnabled = !running;
+        RunQueueButton.IsEnabled = !running;
+        AddToQueueButton.IsEnabled = !running;
+        RemoveQueuedButton.IsEnabled = !running;
+        ClearQueueButton.IsEnabled = !running;
+        StopButton.IsEnabled = running;
+        OverlayStopButton.IsEnabled = running;
+        OverlayCloseButton.IsEnabled = false;
+    }
+
+    private void UpdateProjectScope(PublishOptions options)
+    {
+        if (_selectedProject is null)
+        {
+            ProjectScopeText.Text = "Scope will appear here.";
+            return;
+        }
+
+        var version = FirstNonBlank(options.Version, _selectedProject.Version, "unversioned");
+        var platforms = options.Platforms.Count == 0 ? "No targets selected" : string.Join(", ", options.Platforms);
+        var runtimes = options.DesktopRuntimes.Count == 0 ? "No desktop runtimes" : string.Join(", ", options.DesktopRuntimes);
+        var releaseRoot = ReleaseVersionScanner.ResolveReleaseRoot(_selectedProject, options);
+        ProjectScopeText.Text = $"Scope: {options.Configuration} - v{version} - {platforms} - {runtimes}{Environment.NewLine}Release: {releaseRoot}";
+    }
+
+    private static PublishOptions CloneOptions(PublishOptions source)
+    {
+        var clone = new PublishOptions
+        {
+            Configuration = source.Configuration,
+            Version = source.Version,
+            BuildVersion = source.BuildVersion,
+            SelfContainedDesktop = source.SelfContainedDesktop,
+            SkipTests = source.SkipTests,
+            AndroidVersionCode = source.AndroidVersionCode,
+            AndroidPackageFormat = source.AndroidPackageFormat,
+            AndroidSigningMode = source.AndroidSigningMode,
+            IosRuntimeIdentifier = source.IosRuntimeIdentifier,
+            IosSigningMode = source.IosSigningMode,
+            IosArchiveOnBuild = source.IosArchiveOnBuild,
+            RunScreenshotQa = source.RunScreenshotQa,
+            RunCleanSlateQa = source.RunCleanSlateQa,
+            RunPerformanceQa = source.RunPerformanceQa,
+            ArtifactOutputDirectory = source.ArtifactOutputDirectory,
+            ExtraArguments = source.ExtraArguments,
+            UpdateVersionMetadata = source.UpdateVersionMetadata,
+            PublishToItch = source.PublishToItch,
+            ButlerPath = source.ButlerPath,
+            ItchUser = source.ItchUser,
+            ItchGame = source.ItchGame,
+            ItchChannel = source.ItchChannel,
+            ItchSourcePath = source.ItchSourcePath,
+            ItchExtraArguments = source.ItchExtraArguments
+        };
+
+        clone.Platforms.AddRange(source.Platforms);
+        clone.DesktopRuntimes.AddRange(source.DesktopRuntimes);
+        return clone;
+    }
+
     private static void AddIfChecked(ICollection<string> values, CheckBox box, string value)
     {
         if (box.IsChecked == true)
@@ -732,6 +1011,36 @@ public partial class MainWindow : Window
         return "'" + value.Replace("'", "''") + "'";
     }
 
+    private string FormatEta(double percent)
+    {
+        if (percent < 5 || _progressStartedUtc == default)
+        {
+            return "calculating";
+        }
+
+        var elapsed = DateTime.UtcNow - _progressStartedUtc;
+        var remainingSeconds = elapsed.TotalSeconds * ((100 - percent) / percent);
+        return FormatDuration(TimeSpan.FromSeconds(Math.Max(0, remainingSeconds)));
+    }
+
+    private static string FormatDuration(TimeSpan value)
+    {
+        if (value.TotalHours >= 1)
+        {
+            return value.ToString(@"h\:mm\:ss");
+        }
+
+        return value.ToString(@"m\:ss");
+    }
+
+    private static string GetPublisherVersion()
+    {
+        var version = Assembly.GetExecutingAssembly().GetName().Version;
+        return version is null
+            ? "0.1.0"
+            : $"{version.Major}.{version.Minor}.{version.Build}";
+    }
+
     private static string FindDefaultWorkspaceRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -746,5 +1055,35 @@ public partial class MainWindow : Window
         }
 
         return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    }
+}
+
+public sealed class PublishQueueItem
+{
+    public PublishQueueItem(DragonProject project, PublishOptions options, string commandText)
+    {
+        Project = project;
+        Options = options;
+        CommandText = commandText;
+    }
+
+    public DragonProject Project { get; }
+
+    public PublishOptions Options { get; }
+
+    public string CommandText { get; }
+
+    public string Status { get; set; } = "Queued";
+
+    public string DisplayName => Project.DisplayName;
+
+    public string Summary
+    {
+        get
+        {
+            var version = string.IsNullOrWhiteSpace(Options.Version) ? Project.Version : Options.Version;
+            var targets = Options.Platforms.Count == 0 ? "No targets" : string.Join(", ", Options.Platforms);
+            return $"v{(string.IsNullOrWhiteSpace(version) ? "unversioned" : version)} - {targets}";
+        }
     }
 }

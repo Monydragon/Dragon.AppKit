@@ -21,10 +21,10 @@
       </Grid>
 
       <Grid Grid.Row="1"
-            ColumnDefinitions="340,*"
+            ColumnDefinitions="370,*"
             ColumnSpacing="14">
         <Border Classes="panel">
-          <Grid RowDefinitions="Auto,*" RowSpacing="10">
+          <Grid RowDefinitions="Auto,*,Auto,190" RowSpacing="10">
             <StackPanel Spacing="4">
               <TextBlock Classes="section" Text="Projects" />
               <TextBlock Classes="muted" Text="Dragon, Avalonia, KNI/MonoGame, MAUI, and .NET roots" />
@@ -52,6 +52,41 @@
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
+
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+              <StackPanel Spacing="2">
+                <TextBlock Classes="section" Text="Queue" />
+                <TextBlock x:Name="QueueCountText" Classes="muted" Text="0 queued" />
+              </StackPanel>
+              <Button Grid.Column="1"
+                      x:Name="AddToQueueButton"
+                      Content="Add"
+                      Click="AddSelectedToQueue_Click" />
+              <Button Grid.Column="2"
+                      x:Name="RunQueueButton"
+                      Content="Run Queue"
+                      Click="RunQueue_Click" />
+            </Grid>
+
+            <Grid Grid.Row="3" RowDefinitions="*,Auto" RowSpacing="8">
+              <ListBox x:Name="QueueList">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Margin="4" Spacing="3">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
+                        <TextBlock Grid.Column="1" Classes="status" Text="{Binding Status}" />
+                      </Grid>
+                      <TextBlock Classes="muted" Text="{Binding Summary}" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Button x:Name="RemoveQueuedButton" Content="Remove" Click="RemoveQueued_Click" />
+                <Button Grid.Column="1" x:Name="ClearQueueButton" Content="Clear" Click="ClearQueue_Click" />
+              </Grid>
+            </Grid>
           </Grid>
         </Border>
 
@@ -64,6 +99,7 @@
                 <TextBlock Classes="section" Text="Detected Project" />
                 <TextBlock x:Name="DetectedNameText" FontSize="22" FontWeight="SemiBold" Text="No project selected" />
                 <TextBlock x:Name="DetectedPathText" Classes="muted" Text="Choose or scan a project." />
+                <TextBlock x:Name="ProjectScopeText" Classes="muted" TextWrapping="Wrap" Text="Scope will appear here." />
               </StackPanel>
               <StackPanel Grid.Column="1" Spacing="4">
                 <TextBlock Classes="muted" Text="Type" />
@@ -95,6 +131,15 @@
                   <ComboBox x:Name="ConfigurationBox" SelectionChanged="Option_SelectionChanged" />
                   <TextBlock Text="Version" />
                   <TextBox x:Name="VersionBox" TextChanged="Option_TextChanged" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBlock x:Name="ReleaseVersionCheckText"
+                               Classes="muted"
+                               TextWrapping="Wrap"
+                               Text="Release version check has not run." />
+                    <Button Grid.Column="1"
+                            Content="Verify Latest"
+                            Click="VerifyReleaseVersion_Click" />
+                  </Grid>
                   <TextBlock Text="Build Version" />
                   <TextBox x:Name="BuildVersionBox" TextChanged="Option_TextChanged" />
                   <CheckBox x:Name="UpdateVersionBox" Content="Write version metadata before publish" IsCheckedChanged="Option_CheckedChanged" />
